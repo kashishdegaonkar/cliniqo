@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Signup - Clinqo</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1><a href="../index.html"><i class="fas fa-hospital"></i> Clinqo</a></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="../index.html">Home</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="auth-container">
+        <div class="auth-image" style="background-image: url('../images/doctor-signup.jpg');"></div>
+        <div class="auth-form-container">
+            <div class="auth-form">
+                <h2>Doctor Registration</h2>
+                <form id="signup-form">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="specialisation">Specialisation</label>
+                        <input type="text" id="specialisation" name="specialisation" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hospital">Hospital</label>
+                        <input type="text" id="hospital" name="hospital" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number</label>
+                        <input type="tel" id="phone_number" name="phone_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="experience_years">Experience (years)</label>
+                        <input type="number" id="experience_years" name="experience_years" step="0.1" min="0" required>
+                    </div>
+                    <div id="error-message" class="error-message"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up</button>
+                </form>
+                <div class="form-footer">
+                    <p>Already have an account? <a href="login.html">Login</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupForm = document.getElementById('signup-form');
+            const errorMessage = document.getElementById('error-message');
+            
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const doctorData = {
+                    name: document.getElementById('name').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    specialisation: document.getElementById('specialisation').value,
+                    hospital: document.getElementById('hospital').value,
+                    location: document.getElementById('location').value,
+                    phone_number: document.getElementById('phone_number').value,
+                    experience_years: parseFloat(document.getElementById('experience_years').value)
+                };
+                
+                try {
+                    errorMessage.textContent = '';
+                    await api.registerDoctor(doctorData);
+                    
+                    // Redirect to login page after successful registration
+                    utils.showNotification('Registration successful! Please login.', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 1500);
+                } catch (error) {
+                    errorMessage.textContent = error.detail || 'Registration failed. Please try again.';
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

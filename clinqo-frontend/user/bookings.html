@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - Clinqo</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-hospital"></i> Clinqo</h2>
+                <p>Patient Dashboard</p>
+            </div>
+            <div class="sidebar-menu">
+                <h3>Navigation</h3>
+                <a href="home.html" class="menu-item">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="new-booking.html" class="menu-item">
+                    <i class="fas fa-calendar-plus"></i> New Booking
+                </a>
+                <a href="bookings.html" class="menu-item active">
+                    <i class="fas fa-calendar-alt"></i> My Bookings
+                </a>
+                <a href="profile.html" class="menu-item">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <a href="#" class="menu-item logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h1>My Bookings</h1>
+                <div class="user-profile">
+                    <img id="patient-avatar" src="../images/default-avatar.jpg" alt="Patient Avatar">
+                    <span id="patient-name">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Bookings Tabs -->
+            <div class="tabs">
+                <div class="tab" id="tab-upcoming">Upcoming Bookings</div>
+                <div class="tab" id="tab-past">Past Bookings</div>
+            </div>
+
+            <!-- Upcoming Bookings -->
+            <div class="tab-content" id="content-upcoming">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Upcoming Appointments</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="upcoming-bookings-container">
+                            <div class="loading-spinner">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                        <div id="no-upcoming-bookings" style="text-align: center; padding: 20px; display: none;">
+                            <p>No upcoming appointments. <a href="new-booking.html">Book an appointment</a> now.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Past Bookings -->
+            <div class="tab-content" id="content-past" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Past Appointments</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="past-bookings-container">
+                            <div class="loading-spinner">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                        <div id="no-past-bookings" style="text-align: center; padding: 20px; display: none;">
+                            <p>No past appointments.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Protect route - only accessible to patients
+            if (!utils.protectRoute('patient')) return;
+            
+            // DOM elements
+            const patientNameElement = document.getElementById('patient-name');
+            const patientAvatarElement = document.getElementById('patient-avatar');
+            const tabUpcoming = document.getElementById('tab-upcoming');
+            const tabPast = document.getElementById('tab-past');
+            const contentUpcoming = document.getElementById('content-upcoming');
+            const contentPast = document.getElementById('content-past');
+            const upcomingBookingsContainer = document.getElementById('upcoming-bookings-container');
+            const pastBookingsContainer = document.getElementById('past-bookings-container');
+            const noUpcomingBookings = document.getElementById('no-upcoming-bookings');
+            const noPastBookings = document.getElementById('no-past-bookings');
+            
+            // Load patient's information
+            async function loadPatientInfo() {
+                try {
+                    const patientInfo = await api.getPatientProfile();
+                    patientNameElement.textContent = patientInfo.name;
+                    patientAvatarElement.src = utils.getAvatarUrl(patientInfo.email);
+                } catch (error) {
+                    console.error('Error loading patient info:', error);
+                    utils.showNotification('Failed to load profile information.', 'error');
+                }
+            }
+            
+            // Load upcoming bookings
+            async function loadUpcomingBookings() {
+                try {
+                    const bookings = await api.getPatientUpcomingBookings();
+                    
+                    // Remove loading spinner
+                    upcomingBookingsContainer.innerHTML = '';
+                    
+                    // Show message if no upcoming bookings
+                    if (bookings.length === 0) {
+                        noUpcomingBookings.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Sort bookings by date (earliest first)
+                    bookings.sort((a, b) => new Date(a.booking_time) - new Date(b.booking_time));
+                    
+                    // Create booking cards
+                    const bookingsGrid = document.createElement('div');
+                    bookingsGrid.className = 'bookings-grid';
+                    
+                    bookings.forEach(booking => {
+                        const bookingCard = createBookingCard(booking);
+                        bookingsGrid.appendChild(bookingCard);
+                    });
+                    
+                    upcomingBookingsContainer.appendChild(bookingsGrid);
+                } catch (error) {
+                    console.error('Error loading upcoming bookings:', error);
+                    utils.showNotification('Failed to load upcoming appointments.', 'error');
+                }
+            }
+            
+            // Load past bookings
+            async function loadPastBookings() {
+                try {
+                    const bookings = await api.getPatientPastBookings();
+                    
+                    // Remove loading spinner
+                    pastBookingsContainer.innerHTML = '';
+                    
+                    // Show message if no past bookings
+                    if (bookings.length === 0) {
+                        noPastBookings.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Sort bookings by date (most recent first)
+                    bookings.sort((a, b) => new Date(b.booking_time) - new Date(a.booking_time));
+                    
+                    // Create booking cards
+                    const bookingsGrid = document.createElement('div');
+                    bookingsGrid.className = 'bookings-grid';
+                    
+                    bookings.forEach(booking => {
+                        const bookingCard = createBookingCard(booking);
+                        bookingsGrid.appendChild(bookingCard);
+                    });
+                    
+                    pastBookingsContainer.appendChild(bookingsGrid);
+                } catch (error) {
+                    console.error('Error loading past bookings:', error);
+                    utils.showNotification('Failed to load past appointments.', 'error');
+                }
+            }
+            
+            // Helper function to create booking card
+            function createBookingCard(booking) {
+                const bookingCard = document.createElement('div');
+                bookingCard.className = 'booking-card';
+                
+                bookingCard.innerHTML = `
+                    <div class="booking-card-header">
+                        <div class="booking-doctor">
+                            <img src="${booking.doctor ? utils.getAvatarUrl(booking.doctor.email) : '../images/default-avatar.jpg'}" alt="Doctor Avatar" class="doctor-small-avatar">
+                            <h3>${booking.doctor ? booking.doctor.name : 'Unknown Doctor'}</h3>
+                        </div>
+                        <div class="booking-status ${booking.status}">
+                            ${booking.status}
+                        </div>
+                    </div>
+                    <div class="booking-card-body">
+                        <div class="booking-detail">
+                            <i class="fas fa-stethoscope"></i>
+                            <span>${booking.doctor ? booking.doctor.specialisation : 'Unknown Specialisation'}</span>
+                        </div>
+                        <div class="booking-detail">
+                            <i class="fas fa-hospital"></i>
+                            <span>${booking.doctor ? booking.doctor.hospital : 'Unknown Hospital'}</span>
+                        </div>
+                        <div class="booking-detail">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${booking.doctor ? booking.doctor.location : 'Unknown Location'}</span>
+                        </div>
+                        <div class="booking-detail">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>${utils.formatDateTime(booking.booking_time)}</span>
+                        </div>
+                        <div class="booking-detail">
+                            <i class="fas fa-comment"></i>
+                            <span>${booking.concern || 'No specific concern'}</span>
+                        </div>
+                    </div>
+                `;
+                
+                return bookingCard;
+            }
+            
+            // Tab switching
+            function switchTab(tab) {
+                // Update tab active state
+                tabUpcoming.classList.remove('active');
+                tabPast.classList.remove('active');
+                tab.classList.add('active');
+                
+                // Show/hide content
+                if (tab === tabUpcoming) {
+                    contentUpcoming.style.display = 'block';
+                    contentPast.style.display = 'none';
+                } else {
+                    contentUpcoming.style.display = 'none';
+                    contentPast.style.display = 'block';
+                }
+            }
+            
+            // Check URL for tab parameter
+            function checkUrlForTab() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const tab = urlParams.get('tab');
+                
+                if (tab === 'past') {
+                    switchTab(tabPast);
+                } else {
+                    switchTab(tabUpcoming);
+                }
+            }
+            
+            // Add event listeners for tabs
+            tabUpcoming.addEventListener('click', () => {
+                switchTab(tabUpcoming);
+                // Update URL
+                history.replaceState(null, null, '?tab=upcoming');
+            });
+            
+            tabPast.addEventListener('click', () => {
+                switchTab(tabPast);
+                // Update URL
+                history.replaceState(null, null, '?tab=past');
+            });
+            
+            // Initialize the page
+            loadPatientInfo();
+            loadUpcomingBookings();
+            loadPastBookings();
+            checkUrlForTab();
+        });
+    </script>
+    
+    <style>
+        /* Tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+        
+        .tab:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        /* Bookings */
+        .bookings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .booking-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            transition: var(--transition);
+            border: 1px solid #eee;
+        }
+        
+        .booking-card:hover {
+            box-shadow: var(--shadow);
+        }
+        
+        .booking-card-header {
+            padding: 15px;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .booking-doctor {
+            display: flex;
+            align-items: center;
+        }
+        
+        .booking-doctor i {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin-right: 10px;
+        }
+        
+        .booking-doctor h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+        
+        .booking-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        
+        .booking-status.scheduled {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: #27ae60;
+        }
+        
+        .booking-status.completed {
+            background-color: rgba(52, 152, 219, 0.15);
+            color: #2980b9;
+        }
+        
+        .booking-status.cancelled {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #c0392b;
+        }
+        
+        .booking-card-body {
+            padding: 15px;
+        }
+        
+        .booking-detail {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .booking-detail:last-child {
+            margin-bottom: 0;
+        }
+        
+        .booking-detail i {
+            width: 20px;
+            color: var(--primary-color);
+            margin-right: 10px;
+        }
+        
+        /* Loading spinner */
+        .loading-spinner {
+            text-align: center;
+            padding: 30px;
+            color: #777;
+        }
+        
+        .loading-spinner i {
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+        
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: white;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow);
+            border-radius: 4px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+        
+        .notification.success {
+            border-left-color: var(--secondary-color);
+        }
+        
+        .notification.error {
+            border-left-color: var(--danger-color);
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Doctor avatar in booking card */
+        .doctor-small-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover;
+        }
+    </style>
+</body>
+</html> 

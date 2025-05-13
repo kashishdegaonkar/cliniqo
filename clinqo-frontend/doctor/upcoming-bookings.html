@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Bookings - Clinqo</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-hospital"></i> Clinqo</h2>
+                <p>Doctor Dashboard</p>
+            </div>
+            <div class="sidebar-menu">
+                <h3>Navigation</h3>
+                <a href="upcoming-bookings.html" class="menu-item active">
+                    <i class="fas fa-calendar-check"></i> Upcoming Bookings
+                </a>
+                <a href="profile.html" class="menu-item">
+                    <i class="fas fa-user-md"></i> My Profile
+                </a>
+                <a href="#" class="menu-item logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h1>Upcoming Bookings</h1>
+                <div class="user-profile">
+                    <img id="doctor-avatar" src="../images/default-avatar.jpg" alt="Doctor Avatar">
+                    <span id="doctor-name">Dr. Loading...</span>
+                </div>
+            </div>
+
+            <!-- Calendar Navigation -->
+            <div class="calendar">
+                <div class="calendar-header">
+                    <div class="calendar-nav">
+                        <button id="prev-day"><i class="fas fa-chevron-left"></i></button>
+                        <h2 class="calendar-date" id="current-date">Today</h2>
+                        <button id="next-day"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings List -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Appointments</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table" id="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Patient Name</th>
+                                    <th>Concern</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookings-list">
+                                <!-- Bookings will be inserted here via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-bookings-message" style="text-align: center; padding: 20px; display: none;">
+                        <p>No bookings scheduled for this day.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Appointment Status</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="status-update-form">
+                    <input type="hidden" id="booking-id">
+                    <div class="form-group">
+                        <label for="booking-status">New Status</label>
+                        <select id="booking-status" required>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Protect route - only accessible to doctors
+            if (!utils.protectRoute('doctor')) return;
+            
+            // DOM elements
+            const doctorNameElement = document.getElementById('doctor-name');
+            const doctorAvatarElement = document.getElementById('doctor-avatar');
+            const currentDateElement = document.getElementById('current-date');
+            const prevDayButton = document.getElementById('prev-day');
+            const nextDayButton = document.getElementById('next-day');
+            const bookingsList = document.getElementById('bookings-list');
+            const noBookingsMessage = document.getElementById('no-bookings-message');
+            const statusModal = document.getElementById('status-modal');
+            const closeModalButton = document.querySelector('.close-modal');
+            const statusUpdateForm = document.getElementById('status-update-form');
+            
+            // Current date for bookings
+            let currentDate = new Date();
+            
+            // Format and display the current date
+            function updateDateDisplay() {
+                currentDateElement.textContent = currentDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            }
+            
+            // Load doctor's information
+            async function loadDoctorInfo() {
+                try {
+                    const doctorInfo = await api.getDoctorProfile();
+                    doctorNameElement.textContent = `Dr. ${doctorInfo.name}`;
+                    doctorAvatarElement.src = utils.getAvatarUrl(doctorInfo.email);
+                } catch (error) {
+                    console.error('Error loading doctor info:', error);
+                }
+            }
+            
+            // Load bookings for the selected date
+            async function loadBookings() {
+                try {
+                    const formattedDate = utils.formatDate(currentDate);
+                    const bookings = await api.getDoctorBookingsByDate(formattedDate);
+                    
+                    // Clear existing bookings
+                    bookingsList.innerHTML = '';
+                    
+                    // Show or hide no bookings message
+                    if (bookings.length === 0) {
+                        noBookingsMessage.style.display = 'block';
+                        document.getElementById('bookings-table').style.display = 'none';
+                    } else {
+                        noBookingsMessage.style.display = 'none';
+                        document.getElementById('bookings-table').style.display = 'table';
+                        
+                        // Sort bookings by time
+                        bookings.sort((a, b) => new Date(a.booking_time) - new Date(b.booking_time));
+                        
+                        // Add bookings to the list
+                        bookings.forEach(booking => {
+                            const row = document.createElement('tr');
+                            
+                            // Determine status class
+                            let statusClass = '';
+                            switch (booking.status) {
+                                case 'scheduled':
+                                    statusClass = 'status-scheduled';
+                                    break;
+                                case 'completed':
+                                    statusClass = 'status-completed';
+                                    break;
+                                case 'cancelled':
+                                    statusClass = 'status-cancelled';
+                                    break;
+                            }
+                            
+                            row.innerHTML = `
+                                <td>${utils.formatTime(booking.booking_time)}</td>
+                                <td>${booking.patient ? booking.patient.name : 'Unknown Patient'}</td>
+                                <td>${booking.concern || 'No specific concern'}</td>
+                                <td><span class="status ${statusClass}">${booking.status}</span></td>
+                                <td>
+                                    <button class="btn-icon update-status" data-id="${booking.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            `;
+                            
+                            bookingsList.appendChild(row);
+                        });
+                        
+                        // Add event listeners to update status buttons
+                        document.querySelectorAll('.update-status').forEach(button => {
+                            button.addEventListener('click', (e) => {
+                                const bookingId = e.currentTarget.getAttribute('data-id');
+                                document.getElementById('booking-id').value = bookingId;
+                                statusModal.style.display = 'block';
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading bookings:', error);
+                    utils.showNotification('Failed to load bookings. Please try again.', 'error');
+                }
+            }
+            
+            // Initialize the page
+            updateDateDisplay();
+            loadDoctorInfo();
+            loadBookings();
+            
+            // Event Listeners
+            
+            // Previous day button
+            prevDayButton.addEventListener('click', () => {
+                currentDate.setDate(currentDate.getDate() - 1);
+                updateDateDisplay();
+                loadBookings();
+            });
+            
+            // Next day button
+            nextDayButton.addEventListener('click', () => {
+                currentDate.setDate(currentDate.getDate() + 1);
+                updateDateDisplay();
+                loadBookings();
+            });
+            
+            // Close modal
+            closeModalButton.addEventListener('click', () => {
+                statusModal.style.display = 'none';
+            });
+            
+            // Click outside modal to close
+            window.addEventListener('click', (e) => {
+                if (e.target === statusModal) {
+                    statusModal.style.display = 'none';
+                }
+            });
+            
+            // Status update form submission
+            statusUpdateForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const bookingId = document.getElementById('booking-id').value;
+                const status = document.getElementById('booking-status').value;
+                
+                try {
+                    await api.updateBookingStatus(bookingId, status);
+                    statusModal.style.display = 'none';
+                    utils.showNotification('Booking status updated successfully!', 'success');
+                    loadBookings(); // Reload bookings to show the updated status
+                } catch (error) {
+                    console.error('Error updating booking status:', error);
+                    utils.showNotification('Failed to update booking status. Please try again.', 'error');
+                }
+            });
+        });
+    </script>
+    
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1050;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            animation: modalFadeIn 0.3s;
+        }
+        
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .close-modal {
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: white;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow);
+            border-radius: 4px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+        
+        .notification.success {
+            border-left-color: var(--secondary-color);
+        }
+        
+        .notification.error {
+            border-left-color: var(--danger-color);
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Button icon styles */
+        .btn-icon {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--primary-color);
+            transition: var(--transition);
+        }
+        
+        .btn-icon:hover {
+            color: var(--dark-color);
+        }
+        
+        /* Error message styles */
+        .error-message {
+            color: var(--danger-color);
+            margin-top: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+    </style>
+</body>
+</html> 

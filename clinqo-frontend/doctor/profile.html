@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Profile - Clinqo</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-hospital"></i> Clinqo</h2>
+                <p>Doctor Dashboard</p>
+            </div>
+            <div class="sidebar-menu">
+                <h3>Navigation</h3>
+                <a href="upcoming-bookings.html" class="menu-item">
+                    <i class="fas fa-calendar-check"></i> Upcoming Bookings
+                </a>
+                <a href="profile.html" class="menu-item active">
+                    <i class="fas fa-user-md"></i> My Profile
+                </a>
+                <a href="#" class="menu-item logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h1>My Profile</h1>
+                <div class="user-profile">
+                    <img id="doctor-avatar-header" src="../images/default-avatar.jpg" alt="Doctor Avatar">
+                    <span id="doctor-name">Dr. Loading...</span>
+                </div>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Doctor Information</h2>
+                </div>
+                <div class="card-body">
+                    <div class="profile-container">
+                        <div class="profile-header">
+                            <div class="profile-avatar">
+                                <img id="doctor-avatar-profile" src="../images/default-avatar.jpg" alt="Doctor Avatar">
+                            </div>
+                            <div class="profile-info">
+                                <h2 id="profile-name">Dr. Loading...</h2>
+                                <p id="profile-specialisation">Specialisation: Loading...</p>
+                            </div>
+                        </div>
+                        <div class="profile-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Email</span>
+                                <span class="detail-value" id="profile-email">Loading...</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Hospital</span>
+                                <span class="detail-value" id="profile-hospital">Loading...</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Location</span>
+                                <span class="detail-value" id="profile-location">Loading...</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Phone Number</span>
+                                <span class="detail-value" id="profile-phone">Loading...</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Experience</span>
+                                <span class="detail-value" id="profile-experience">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Appointment Statistics</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="scheduled-count">0</span>
+                                <span class="stat-label">Scheduled</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-count">0</span>
+                                <span class="stat-label">Total Appointments</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="completed-count">0</span>
+                                <span class="stat-label">Completed</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="cancelled-count">0</span>
+                                <span class="stat-label">Cancelled</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Protect route - only accessible to doctors
+            if (!utils.protectRoute('doctor')) return;
+            
+            // DOM elements for profile
+            const doctorNameElement = document.getElementById('doctor-name');
+            const profileNameElement = document.getElementById('profile-name');
+            const profileSpecialisationElement = document.getElementById('profile-specialisation');
+            const profileEmailElement = document.getElementById('profile-email');
+            const profileHospitalElement = document.getElementById('profile-hospital');
+            const profileLocationElement = document.getElementById('profile-location');
+            const profilePhoneElement = document.getElementById('profile-phone');
+            const profileExperienceElement = document.getElementById('profile-experience');
+            const doctorAvatarHeader = document.getElementById('doctor-avatar-header');
+            const doctorAvatarProfile = document.getElementById('doctor-avatar-profile');
+            
+            // DOM elements for statistics
+            const scheduledCountElement = document.getElementById('scheduled-count');
+            const totalCountElement = document.getElementById('total-count');
+            const completedCountElement = document.getElementById('completed-count');
+            const cancelledCountElement = document.getElementById('cancelled-count');
+            
+            // Load doctor's profile information
+            async function loadDoctorProfile() {
+                try {
+                    const doctorInfo = await api.getDoctorProfile();
+                    
+                    // Set profile information
+                    doctorNameElement.textContent = `Dr. ${doctorInfo.name}`;
+                    profileNameElement.textContent = `Dr. ${doctorInfo.name}`;
+                    profileSpecialisationElement.textContent = `Specialisation: ${doctorInfo.specialisation}`;
+                    profileEmailElement.textContent = doctorInfo.email;
+                    profileHospitalElement.textContent = doctorInfo.hospital;
+                    profileLocationElement.textContent = doctorInfo.location;
+                    profilePhoneElement.textContent = doctorInfo.phone_number;
+                    profileExperienceElement.textContent = `${doctorInfo.experience_years} years`;
+                    
+                    // Set avatar images
+                    const avatarUrl = utils.getAvatarUrl(doctorInfo.email);
+                    doctorAvatarHeader.src = avatarUrl;
+                    doctorAvatarProfile.src = avatarUrl;
+                } catch (error) {
+                    console.error('Error loading doctor profile:', error);
+                    utils.showNotification('Failed to load profile information. Please try again.', 'error');
+                }
+            }
+            
+            // Load doctor's booking statistics
+            async function loadDoctorStatistics() {
+                try {
+                    const bookings = await api.getDoctorBookings();
+                    
+                    // Calculate statistics
+                    const totalBookings = bookings.length;
+                    let scheduledBookings = 0;
+                    let completedBookings = 0;
+                    let cancelledBookings = 0;
+                    
+                    bookings.forEach(booking => {
+                        switch (booking.status) {
+                            case 'scheduled':
+                                scheduledBookings++;
+                                break;
+                            case 'completed':
+                                completedBookings++;
+                                break;
+                            case 'cancelled':
+                                cancelledBookings++;
+                                break;
+                        }
+                    });
+                    
+                    // Update statistics display
+                    totalCountElement.textContent = totalBookings;
+                    scheduledCountElement.textContent = scheduledBookings;
+                    completedCountElement.textContent = completedBookings;
+                    cancelledCountElement.textContent = cancelledBookings;
+                } catch (error) {
+                    console.error('Error loading doctor statistics:', error);
+                    utils.showNotification('Failed to load appointment statistics. Please try again.', 'error');
+                }
+            }
+            
+            // Initialize the page
+            loadDoctorProfile();
+            loadDoctorStatistics();
+        });
+    </script>
+    
+    <style>
+        /* Profile styles */
+        .profile-container {
+            padding: 20px;
+        }
+        
+        .profile-header {
+            display: flex;
+            margin-bottom: 30px;
+        }
+        
+        .profile-avatar {
+            margin-right: 30px;
+        }
+        
+        .profile-avatar img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--light-color);
+        }
+        
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .profile-info h2 {
+            margin: 0 0 10px 0;
+            font-size: 2rem;
+            text-align: left;
+        }
+        
+        .profile-info p {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .profile-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .detail-item {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            width: 150px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .detail-value {
+            flex: 1;
+        }
+        
+        /* Statistics styles */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 10px;
+        }
+        
+        .stat-card {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+        
+        .stat-card:hover {
+            background-color: #e9ecef;
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            background-color: rgba(52, 152, 219, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+        }
+        
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #777;
+        }
+        
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: white;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow);
+            border-radius: 4px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+        
+        .notification.success {
+            border-left-color: var(--secondary-color);
+        }
+        
+        .notification.error {
+            border-left-color: var(--danger-color);
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</body>
+</html> 
